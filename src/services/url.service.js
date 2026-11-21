@@ -25,7 +25,7 @@ const createShortUrlService = async (originalUrl) => {
     const shortCode = generateShortCode();
 
     // Save URL in MongoDB
-    const newUrl = await Url.create({ originalUrl, shortCode })
+    const newUrl = await Url.create({ originalUrl, shortCode });
 
     // Construct short URL
     const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
@@ -39,4 +39,19 @@ const createShortUrlService = async (originalUrl) => {
     }
 }
 
-export default createShortUrlService;
+const redirectShortUrlService = async (shortCode) => {
+
+    const findUrl = await Url.findOne({ shortCode });
+    if (!findUrl) {
+        throw new Error("URL_NOT_FOUND")
+    }
+
+    // Check URL expiration
+    if (findUrl.expiresAt && findUrl.expiresAt <= new Date()) {
+        throw new Error("URL_EXPIRED")
+    }
+
+    return findUrl.originalUrl;
+}
+
+export { createShortUrlService, redirectShortUrlService };
