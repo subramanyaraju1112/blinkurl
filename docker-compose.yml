@@ -1,0 +1,25 @@
+services:
+  mongodb:
+    image: mongo:8
+    container_name: blinkurl-mongodb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27018:27017" #loopback address
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:8
+    container_name: blinkurl-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379" #loopback address
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongodb_data:
+    name: blinkurl_mongodb_data
+
+  redis_data:
+    name: blinkurl_redis_data
