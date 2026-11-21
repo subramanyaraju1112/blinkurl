@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import connectDB from "./config/database";
 
 dotenv.config();
 
@@ -18,6 +19,11 @@ app.get("/health", (req, res) => {
 })
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`BlinkURL server is running on PORT ${PORT}`)
-})
+const startServer = async () => {
+    await connectDB();
+    app.listen(PORT, () => {
+        console.log(`BlinkURL server is running on PORT ${PORT}`)
+    })
+}
+
+startServer();
