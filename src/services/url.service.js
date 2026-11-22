@@ -49,6 +49,9 @@ const redirectShortUrlService = async (shortCode) => {
     if (cachedUrl) {
         // Cache HIT
         const cachedValue = JSON.parse(cachedUrl);
+        if (cachedValue.expiresAt && new Date(cachedValue.expiresAt) <= new Date()) {
+            throw new Error("URL_EXPIRED")
+        }
         originalUrl = cachedValue.originalUrl;
     } else {
         // Cache MISS
@@ -62,9 +65,22 @@ const redirectShortUrlService = async (shortCode) => {
             throw new Error("URL_EXPIRED")
         }
 
+        // Calculate TTL
+        let ttl = 3600;
+
+        if (findUrl.expiresAt) {
+            const remainingTime = (findUrl.expiresAt.getTime() - Date.now()) / 1000
+            if (remainingTime <= 1) {
+                throw new Error("URL_EXPIRED")
+            }
+            if (remainingTime < ttl) {
+                ttl = Math.floor(remainingTime)
+            }
+        }
+
         // Store the data in Redis
         const cachedValue = JSON.stringify({ originalUrl: findUrl.originalUrl, expiresAt: findUrl.expiresAt })
-        await redis.set(cacheKey, cachedValue)
+        await redis.set(cacheKey, cachedValue, "EX", ttl)
 
         originalUrl = findUrl.originalUrl;
 
