@@ -1,5 +1,6 @@
 import { customAlphabet } from "nanoid";
 import Url from "../models/url.model";
+import redis from "../config/redis.js";
 
 const generateShortCode = customAlphabet(
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -40,19 +41,38 @@ const createShortUrlService = async (originalUrl) => {
 }
 
 const redirectShortUrlService = async (shortCode) => {
+    const cacheKey = `url:${shortCode}`;
+    const cachedUrl = await redis.get(cacheKey);
 
-    const findUrl = await Url.findOne({ shortCode });
-    if (!findUrl) {
-        throw new Error("URL_NOT_FOUND")
+    let originalUrl;
+
+    if (cachedUrl) {
+        // Cache HIT
+        const cachedValue = JSON.parse(cachedUrl);
+        originalUrl = cachedValue.originalUrl;
+    } else {
+        // Cache MISS
+        const findUrl = await Url.findOne({ shortCode });
+        if (!findUrl) {
+            throw new Error("URL_NOT_FOUND")
+        }
+
+        // Check URL expiration
+        if (findUrl.expiresAt && findUrl.expiresAt <= new Date()) {
+            throw new Error("URL_EXPIRED")
+        }
+
+        // Store the data in Redis
+        const cachedValue = JSON.stringify({ originalUrl: findUrl.originalUrl, expiresAt: findUrl.expiresAt })
+        await redis.set(cacheKey, cachedValue)
+
+        originalUrl = findUrl.originalUrl;
+
     }
 
-    // Check URL expiration
-    if (findUrl.expiresAt && findUrl.expiresAt <= new Date()) {
-        throw new Error("URL_EXPIRED")
-    }
     // Increment the clicks count
     await Url.updateOne({ shortCode }, { $inc: { "clicks": 1 } })
-    return findUrl.originalUrl;
+    return originalUrl;
 }
 
 export { createShortUrlService, redirectShortUrlService };
