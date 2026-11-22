@@ -50,7 +50,8 @@ const redirectShortUrlService = async (shortCode) => {
     if (findUrl.expiresAt && findUrl.expiresAt <= new Date()) {
         throw new Error("URL_EXPIRED")
     }
-
+    // Increment the clicks count
+    await Url.updateOne({ shortCode }, { $inc: { "clicks": 1 } })
     return findUrl.originalUrl;
 }
 
